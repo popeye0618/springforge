@@ -83,4 +83,24 @@ class ApiResponseTest {
         assertThat(response.success).isFalse()
         assertThat(response.error).isEqualTo(expectedError)
     }
+
+    @Test
+    @DisplayName("BusinessException에 커스텀 메시지가 지정된 경우 실패 응답에 해당 메시지가 반영된다")
+    fun failureWithBusinessExceptionHavingCustomMessage() {
+        // given
+        val customMessage = "커스텀 에러 메시지"
+        val exception = BusinessException(errorCode = SampleErrorCode, message = customMessage)
+        val expectedError = ErrorResponse(
+            code = SampleErrorCode.code,
+            message = customMessage,
+            fields = emptyList(),
+        )
+
+        // when
+        val response = ApiResponse.failure(exception)
+
+        // then
+        assertThat(response.success).isFalse()
+        assertThat(response.error).isEqualTo(expectedError)
+    }
 }

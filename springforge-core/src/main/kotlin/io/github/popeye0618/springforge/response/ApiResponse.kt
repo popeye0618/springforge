@@ -3,7 +3,7 @@ package io.github.popeye0618.springforge.response
 import io.github.popeye0618.springforge.error.BusinessException
 import io.github.popeye0618.springforge.error.ErrorCode
 
-data class ApiResponse<T>(
+data class ApiResponse<out T>(
     val success: Boolean,
     val data: T? = null,
     val error: ErrorResponse? = null,
@@ -32,7 +32,13 @@ data class ApiResponse<T>(
             ),
         )
 
-        fun failure(exception: BusinessException): ApiResponse<Nothing> =
-            failure(errorCode = exception.errorCode)
+        fun failure(exception: BusinessException): ApiResponse<Nothing> = ApiResponse(
+            success = false,
+            error = ErrorResponse(
+                code = exception.errorCode.code,
+                message = exception.message,
+                fields = emptyList()
+            )
+        )
     }
 }
