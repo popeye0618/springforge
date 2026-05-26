@@ -5,6 +5,7 @@ import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import io.github.popeye0618.springforge.error.BusinessException
 import io.github.popeye0618.springforge.error.CommonErrorCode
 import io.github.popeye0618.springforge.error.ErrorCode
+import jakarta.validation.ConstraintViolationException
 import jakarta.validation.Valid
 import jakarta.validation.constraints.NotBlank
 import org.assertj.core.api.Assertions.assertThat
@@ -54,6 +55,10 @@ class GlobalExceptionHandlerTest {
 
         @GetMapping("/response-status")
         fun throwResponseStatus(): Nothing = throw ResponseStatusException(HttpStatus.FORBIDDEN, "접근 금지")
+
+        @GetMapping("/constraint-violation")
+        fun throwConstraintViolation(): Nothing =
+            throw ConstraintViolationException(emptySet())
 
         @GetMapping("/global-error")
         fun throwGlobalError(): Nothing {
@@ -148,6 +153,36 @@ class GlobalExceptionHandlerTest {
         // then
         assertThat(result.response.status).isEqualTo(403)
         assertThat(result.response.contentAsString).contains(CommonErrorCode.FORBIDDEN.code)
+    }
+
+    @Test
+    @DisplayName("잘못된 형식의 JSON 요청 시 400과 INVALID_INPUT이 응답된다")
+    fun handleHttpMessageNotReadable() {
+        // given: 유효하지 않은 JSON을 request body로 전송
+
+        // when
+        val result = mockMvc.perform(
+            post("/validation")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("invalid-json")
+        ).andReturn()
+
+        // then
+        assertThat(result.response.status).isEqualTo(400)
+        assertThat(result.response.contentAsString).contains(CommonErrorCode.INVALID_INPUT.code)
+    }
+
+    @Test
+    @DisplayName("ConstraintViolationException이 발생하면 400과 INVALID_INPUT이 응답된다")
+    fun handleConstraintViolation() {
+        // given: /constraint-violation 엔드포인트가 ConstraintViolationException을 던짐
+
+        // when
+        val result = mockMvc.perform(get("/constraint-violation")).andReturn()
+
+        // then
+        assertThat(result.response.status).isEqualTo(400)
+        assertThat(result.response.contentAsString).contains(CommonErrorCode.INVALID_INPUT.code)
     }
 
     @Test
