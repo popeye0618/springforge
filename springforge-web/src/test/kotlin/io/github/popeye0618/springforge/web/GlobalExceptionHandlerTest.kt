@@ -159,7 +159,7 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
-    @DisplayName("매핑되지 않은 상태 코드의 ResponseStatusException이 발생하면 원래 상태 코드가 보존된다")
+    @DisplayName("매핑되지 않은 상태 코드의 ResponseStatusException이 발생하면 원래 상태 코드와 동적 ErrorCode가 응답된다")
     fun handleResponseStatusExceptionUnmapped() {
         // given: /response-status-unmapped 엔드포인트가 409 ResponseStatusException을 던짐
 
@@ -168,7 +168,8 @@ class GlobalExceptionHandlerTest {
 
         // then
         assertThat(result.response.status).isEqualTo(409)
-        assertThat(result.response.contentAsString).contains(CommonErrorCode.INTERNAL_SERVER_ERROR.code)
+        assertThat(result.response.contentAsString).contains("COMMON-409")
+        assertThat(result.response.contentAsString).contains("충돌 발생")
     }
 
     @Test

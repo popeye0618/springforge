@@ -80,18 +80,20 @@ class GlobalExceptionHandler {
     @ExceptionHandler(ResponseStatusException::class)
     fun handleResponseStatus(e: ResponseStatusException): ResponseEntity<ApiResponse<Nothing>> {
         log.warn("ResponseStatusException: status={}, reason={}", e.statusCode.value(), e.reason, e)
-        val errorCode = when (e.statusCode.value()) {
+        val errorCode: ErrorCode = when (e.statusCode.value()) {
             400 -> CommonErrorCode.INVALID_INPUT
             401 -> CommonErrorCode.UNAUTHORIZED
             403 -> CommonErrorCode.FORBIDDEN
             404 -> CommonErrorCode.RESOURCE_NOT_FOUND
             405 -> CommonErrorCode.METHOD_NOT_ALLOWED
             415 -> CommonErrorCode.UNSUPPORTED_MEDIA_TYPE
-            else -> null
+            else -> object : ErrorCode {
+                override val code = "COMMON-${e.statusCode.value()}"
+                override val message = e.reason ?: "HTTP ${e.statusCode.value()} error"
+                override val status = e.statusCode.value()
+            }
         }
-        return errorCode?.let { toResponseEntity(it) }
-            ?: ResponseEntity.status(e.statusCode.value())
-                .body(ApiResponse.failure(CommonErrorCode.INTERNAL_SERVER_ERROR))
+        return toResponseEntity(errorCode)
     }
 
     @ExceptionHandler(Exception::class)
