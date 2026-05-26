@@ -16,10 +16,8 @@ dependencies {
 
 	compileOnly("org.springframework.boot:spring-boot-autoconfigure")
 	compileOnly("org.springframework:spring-web")
-	compileOnly("org.springframework:spring-webmvc")
 	compileOnly("jakarta.validation:jakarta.validation-api")
 	compileOnly("jakarta.servlet:jakarta.servlet-api")
-	compileOnly("org.slf4j:slf4j-api")
 
 	testImplementation("org.springframework.boot:spring-boot-starter-web")
 	testImplementation("org.springframework.boot:spring-boot-starter-validation")

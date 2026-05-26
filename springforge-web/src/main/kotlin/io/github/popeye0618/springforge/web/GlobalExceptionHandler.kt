@@ -6,7 +6,6 @@ import io.github.popeye0618.springforge.error.ErrorCode
 import io.github.popeye0618.springforge.response.ApiResponse
 import io.github.popeye0618.springforge.response.FieldErrorResponse
 import jakarta.validation.ConstraintViolationException
-import org.slf4j.LoggerFactory
 import org.springframework.http.ResponseEntity
 import org.springframework.http.converter.HttpMessageNotReadableException
 import org.springframework.validation.FieldError
@@ -16,13 +15,9 @@ import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
 import org.springframework.web.method.annotation.HandlerMethodValidationException
-import org.springframework.web.server.ResponseStatusException
-import org.springframework.web.servlet.resource.NoResourceFoundException
 
 @RestControllerAdvice
 class GlobalExceptionHandler {
-
-    private val log = LoggerFactory.getLogger(GlobalExceptionHandler::class.java)
 
     @ExceptionHandler(BusinessException::class)
     fun handleBusinessException(e: BusinessException): ResponseEntity<ApiResponse<Nothing>> = toResponseEntity(e)
@@ -72,36 +67,6 @@ class GlobalExceptionHandler {
     @ExceptionHandler(HttpMediaTypeNotSupportedException::class)
     fun handleMediaTypeNotSupported(e: HttpMediaTypeNotSupportedException): ResponseEntity<ApiResponse<Nothing>> =
         toResponseEntity(CommonErrorCode.UNSUPPORTED_MEDIA_TYPE)
-
-    @ExceptionHandler(NoResourceFoundException::class)
-    fun handleNoResourceFound(e: NoResourceFoundException): ResponseEntity<ApiResponse<Nothing>> =
-        toResponseEntity(CommonErrorCode.RESOURCE_NOT_FOUND)
-
-    @ExceptionHandler(ResponseStatusException::class)
-    fun handleResponseStatus(e: ResponseStatusException): ResponseEntity<ApiResponse<Nothing>> {
-        log.warn("ResponseStatusException: status={}, reason={}", e.statusCode.value(), e.reason, e)
-        val errorCode: ErrorCode = when (e.statusCode.value()) {
-            400 -> CommonErrorCode.INVALID_INPUT
-            401 -> CommonErrorCode.UNAUTHORIZED
-            403 -> CommonErrorCode.FORBIDDEN
-            404 -> CommonErrorCode.RESOURCE_NOT_FOUND
-            405 -> CommonErrorCode.METHOD_NOT_ALLOWED
-            415 -> CommonErrorCode.UNSUPPORTED_MEDIA_TYPE
-            else -> object : ErrorCode {
-                override val code = "COMMON-${e.statusCode.value()}"
-                override val message = e.reason ?: "HTTP ${e.statusCode.value()} error"
-                override val status = e.statusCode.value()
-            }
-        }
-        return toResponseEntity(errorCode)
-    }
-
-    @ExceptionHandler(Exception::class)
-    fun handleException(e: Exception): ResponseEntity<ApiResponse<Nothing>> {
-        if (e.javaClass.name == "org.springframework.security.access.AccessDeniedException") throw e
-        log.error("Unhandled exception", e)
-        return toResponseEntity(CommonErrorCode.INTERNAL_SERVER_ERROR)
-    }
 
     private fun toResponseEntity(
         errorCode: ErrorCode,

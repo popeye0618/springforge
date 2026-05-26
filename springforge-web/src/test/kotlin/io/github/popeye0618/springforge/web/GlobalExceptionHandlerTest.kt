@@ -9,11 +9,9 @@ import jakarta.validation.ConstraintViolationException
 import jakarta.validation.Valid
 import jakarta.validation.constraints.NotBlank
 import org.assertj.core.api.Assertions.assertThat
-import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.springframework.core.MethodParameter
-import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter
 import org.springframework.test.web.servlet.MockMvc
@@ -27,7 +25,6 @@ import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RestController
-import org.springframework.web.server.ResponseStatusException
 import kotlin.test.Test
 
 class GlobalExceptionHandlerTest {
@@ -50,18 +47,6 @@ class GlobalExceptionHandlerTest {
 
         @PostMapping("/validation")
         fun validation(@RequestBody @Valid request: SampleRequest): String = request.name
-
-        @GetMapping("/exception")
-        fun throwException(): Nothing = throw RuntimeException("일반 예외")
-
-        @GetMapping("/access-denied")
-        fun throwAccessDenied(): Nothing = throw org.springframework.security.access.AccessDeniedException("권한 없음")
-
-        @GetMapping("/response-status")
-        fun throwResponseStatus(): Nothing = throw ResponseStatusException(HttpStatus.FORBIDDEN, "접근 금지")
-
-        @GetMapping("/response-status-unmapped")
-        fun throwResponseStatusUnmapped(): Nothing = throw ResponseStatusException(HttpStatus.CONFLICT, "충돌 발생")
 
         @GetMapping("/constraint-violation")
         fun throwConstraintViolation(): Nothing =
@@ -150,33 +135,6 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
-    @DisplayName("ResponseStatusException이 발생하면 예외의 status에 맞는 ErrorCode로 응답된다")
-    fun handleResponseStatusException() {
-        // given: /response-status 엔드포인트가 403 ResponseStatusException을 던짐
-
-        // when
-        val result = mockMvc.perform(get("/response-status")).andReturn()
-
-        // then
-        assertThat(result.response.status).isEqualTo(403)
-        assertThat(result.response.contentAsString).contains(CommonErrorCode.FORBIDDEN.code)
-    }
-
-    @Test
-    @DisplayName("매핑되지 않은 상태 코드의 ResponseStatusException이 발생하면 원래 상태 코드와 동적 ErrorCode가 응답된다")
-    fun handleResponseStatusExceptionUnmapped() {
-        // given: /response-status-unmapped 엔드포인트가 409 ResponseStatusException을 던짐
-
-        // when
-        val result = mockMvc.perform(get("/response-status-unmapped")).andReturn()
-
-        // then
-        assertThat(result.response.status).isEqualTo(409)
-        assertThat(result.response.contentAsString).contains("COMMON-409")
-        assertThat(result.response.contentAsString).contains("충돌 발생")
-    }
-
-    @Test
     @DisplayName("잘못된 형식의 JSON 요청 시 400과 INVALID_INPUT이 응답된다")
     fun handleHttpMessageNotReadable() {
         // given: 유효하지 않은 JSON을 request body로 전송
@@ -204,33 +162,5 @@ class GlobalExceptionHandlerTest {
         // then
         assertThat(result.response.status).isEqualTo(400)
         assertThat(result.response.contentAsString).contains(CommonErrorCode.INVALID_INPUT.code)
-    }
-
-    @Test
-    @DisplayName("AccessDeniedException은 500으로 처리하지 않고 rethrow하여 Spring Security가 처리하도록 한다")
-    fun handleAccessDeniedException() {
-        // given: /access-denied 엔드포인트가 AccessDeniedException을 던짐
-
-        // when: rethrow된 예외는 ServletException으로 감싸져 전파됨
-        val exception = assertThrows<jakarta.servlet.ServletException> {
-            mockMvc.perform(get("/access-denied")).andReturn()
-        }
-
-        // then: cause가 AccessDeniedException — 500 응답이 아닌 Spring Security에게 위임
-        assertThat(exception.cause)
-            .isInstanceOf(org.springframework.security.access.AccessDeniedException::class.java)
-    }
-
-    @Test
-    @DisplayName("처리되지 않은 Exception이 발생하면 500과 INTERNAL_SERVER_ERROR가 응답된다")
-    fun handleException() {
-        // given: /exception 엔드포인트가 RuntimeException을 던짐
-
-        // when
-        val result = mockMvc.perform(get("/exception")).andReturn()
-
-        // then
-        assertThat(result.response.status).isEqualTo(500)
-        assertThat(result.response.contentAsString).contains(CommonErrorCode.INTERNAL_SERVER_ERROR.code)
     }
 }
