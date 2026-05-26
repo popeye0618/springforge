@@ -56,6 +56,9 @@ class GlobalExceptionHandlerTest {
         @GetMapping("/response-status")
         fun throwResponseStatus(): Nothing = throw ResponseStatusException(HttpStatus.FORBIDDEN, "접근 금지")
 
+        @GetMapping("/response-status-unmapped")
+        fun throwResponseStatusUnmapped(): Nothing = throw ResponseStatusException(HttpStatus.CONFLICT, "충돌 발생")
+
         @GetMapping("/constraint-violation")
         fun throwConstraintViolation(): Nothing =
             throw ConstraintViolationException(emptySet())
@@ -153,6 +156,19 @@ class GlobalExceptionHandlerTest {
         // then
         assertThat(result.response.status).isEqualTo(403)
         assertThat(result.response.contentAsString).contains(CommonErrorCode.FORBIDDEN.code)
+    }
+
+    @Test
+    @DisplayName("매핑되지 않은 상태 코드의 ResponseStatusException이 발생하면 원래 상태 코드가 보존된다")
+    fun handleResponseStatusExceptionUnmapped() {
+        // given: /response-status-unmapped 엔드포인트가 409 ResponseStatusException을 던짐
+
+        // when
+        val result = mockMvc.perform(get("/response-status-unmapped")).andReturn()
+
+        // then
+        assertThat(result.response.status).isEqualTo(409)
+        assertThat(result.response.contentAsString).contains(CommonErrorCode.INTERNAL_SERVER_ERROR.code)
     }
 
     @Test

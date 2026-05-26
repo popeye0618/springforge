@@ -55,8 +55,9 @@ class GlobalExceptionHandler {
     fun handleHandlerMethodValidation(e: HandlerMethodValidationException): ResponseEntity<ApiResponse<Nothing>> {
         val fields = (e.valueResults + e.beanResults).flatMap { result ->
             result.resolvableErrors.map { error ->
+                val fieldName = if (error is FieldError) error.field else result.methodParameter.parameterName ?: ""
                 FieldErrorResponse(
-                    field = result.methodParameter.parameterName ?: "",
+                    field = fieldName,
                     message = error.defaultMessage ?: "",
                 )
             }
@@ -86,9 +87,11 @@ class GlobalExceptionHandler {
             404 -> CommonErrorCode.RESOURCE_NOT_FOUND
             405 -> CommonErrorCode.METHOD_NOT_ALLOWED
             415 -> CommonErrorCode.UNSUPPORTED_MEDIA_TYPE
-            else -> CommonErrorCode.INTERNAL_SERVER_ERROR
+            else -> null
         }
-        return toResponseEntity(errorCode)
+        return errorCode?.let { toResponseEntity(it) }
+            ?: ResponseEntity.status(e.statusCode.value())
+                .body(ApiResponse.failure(CommonErrorCode.INTERNAL_SERVER_ERROR))
     }
 
     @ExceptionHandler(Exception::class)
