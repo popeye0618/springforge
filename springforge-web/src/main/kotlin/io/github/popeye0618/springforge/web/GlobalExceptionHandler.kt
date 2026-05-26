@@ -7,11 +7,13 @@ import io.github.popeye0618.springforge.response.ApiResponse
 import io.github.popeye0618.springforge.response.FieldErrorResponse
 import org.slf4j.LoggerFactory
 import org.springframework.http.ResponseEntity
+import org.springframework.validation.FieldError
 import org.springframework.web.HttpMediaTypeNotSupportedException
 import org.springframework.web.HttpRequestMethodNotSupportedException
 import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
+import org.springframework.web.server.ResponseStatusException
 import org.springframework.web.servlet.resource.NoResourceFoundException
 
 @RestControllerAdvice
@@ -24,8 +26,9 @@ class GlobalExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException::class)
     fun handleMethodArgumentNotValid(e: MethodArgumentNotValidException): ResponseEntity<ApiResponse<Nothing>> {
-        val fields = e.bindingResult.fieldErrors.map {
-            FieldErrorResponse(field = it.field, message = it.defaultMessage ?: "")
+        val fields = e.bindingResult.allErrors.map { error ->
+            val fieldName = if (error is FieldError) error.field else error.objectName
+            FieldErrorResponse(field = fieldName, message = error.defaultMessage ?: "")
         }
         return toResponseEntity(CommonErrorCode.INVALID_INPUT, fields)
     }
@@ -41,6 +44,20 @@ class GlobalExceptionHandler {
     @ExceptionHandler(NoResourceFoundException::class)
     fun handleNoResourceFound(e: NoResourceFoundException) =
         toResponseEntity(CommonErrorCode.RESOURCE_NOT_FOUND)
+
+    @ExceptionHandler(ResponseStatusException::class)
+    fun handleResponseStatus(e: ResponseStatusException): ResponseEntity<ApiResponse<Nothing>> {
+        val errorCode = when (e.statusCode.value()) {
+            400 -> CommonErrorCode.INVALID_INPUT
+            401 -> CommonErrorCode.UNAUTHORIZED
+            403 -> CommonErrorCode.FORBIDDEN
+            404 -> CommonErrorCode.RESOURCE_NOT_FOUND
+            405 -> CommonErrorCode.METHOD_NOT_ALLOWED
+            415 -> CommonErrorCode.UNSUPPORTED_MEDIA_TYPE
+            else -> CommonErrorCode.INTERNAL_SERVER_ERROR
+        }
+        return toResponseEntity(errorCode)
+    }
 
     @ExceptionHandler(Exception::class)
     fun handleException(e: Exception): ResponseEntity<ApiResponse<Nothing>> {

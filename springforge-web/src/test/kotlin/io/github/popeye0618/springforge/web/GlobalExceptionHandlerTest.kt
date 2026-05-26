@@ -10,17 +10,22 @@ import jakarta.validation.constraints.NotBlank
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
+import org.springframework.core.MethodParameter
+import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
+import org.springframework.validation.BeanPropertyBindingResult
 import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean
+import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.server.ResponseStatusException
 import kotlin.test.Test
 
 class GlobalExceptionHandlerTest {
@@ -46,6 +51,17 @@ class GlobalExceptionHandlerTest {
 
         @GetMapping("/exception")
         fun throwException(): Nothing = throw RuntimeException("일반 예외")
+
+        @GetMapping("/response-status")
+        fun throwResponseStatus(): Nothing = throw ResponseStatusException(HttpStatus.FORBIDDEN, "접근 금지")
+
+        @GetMapping("/global-error")
+        fun throwGlobalError(): Nothing {
+            val bindingResult = BeanPropertyBindingResult(Any(), "request")
+            bindingResult.reject("mismatch", "비밀번호가 일치하지 않습니다.")
+            val param = MethodParameter(TestController::class.java.getDeclaredMethod("throwGlobalError"), -1)
+            throw MethodArgumentNotValidException(param, bindingResult)
+        }
     }
 
     @BeforeEach
@@ -95,6 +111,20 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
+    @DisplayName("클래스 레벨 검증 실패로 globalError가 발생하면 objectName이 field에 담겨 응답된다")
+    fun handleGlobalValidationError() {
+        // given: 클래스 레벨 validator가 globalError를 등록한 MethodArgumentNotValidException을 던짐
+
+        // when
+        val result = mockMvc.perform(get("/global-error")).andReturn()
+
+        // then
+        assertThat(result.response.status).isEqualTo(400)
+        assertThat(result.response.contentAsString).contains(CommonErrorCode.INVALID_INPUT.code)
+        assertThat(result.response.contentAsString).contains("request")
+    }
+
+    @Test
     @DisplayName("지원하지 않는 HTTP 메서드로 요청하면 405와 METHOD_NOT_ALLOWED가 응답된다")
     fun handleMethodNotSupported() {
         // given: GET만 지원하는 엔드포인트에 POST 요청
@@ -105,6 +135,19 @@ class GlobalExceptionHandlerTest {
         // then
         assertThat(result.response.status).isEqualTo(405)
         assertThat(result.response.contentAsString).contains(CommonErrorCode.METHOD_NOT_ALLOWED.code)
+    }
+
+    @Test
+    @DisplayName("ResponseStatusException이 발생하면 예외의 status에 맞는 ErrorCode로 응답된다")
+    fun handleResponseStatusException() {
+        // given: /response-status 엔드포인트가 403 ResponseStatusException을 던짐
+
+        // when
+        val result = mockMvc.perform(get("/response-status")).andReturn()
+
+        // then
+        assertThat(result.response.status).isEqualTo(403)
+        assertThat(result.response.contentAsString).contains(CommonErrorCode.FORBIDDEN.code)
     }
 
     @Test
