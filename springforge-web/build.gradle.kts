@@ -3,6 +3,7 @@ plugins {
 	kotlin("jvm")
 	kotlin("plugin.spring")
 	id("io.spring.dependency-management")
+	id("com.vanniktech.maven.publish")
 }
 
 dependencyManagement {
@@ -26,4 +27,11 @@ dependencies {
 	testImplementation(kotlin("test-junit5"))
 
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+}
+
+mavenPublishing {
+	pom {
+		name.set("Springforge Web")
+		description.set("Spring Web integrations and auto-configurations for the Springforge toolkit.")
+	}
 }
