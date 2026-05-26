@@ -15,7 +15,7 @@ class ApiResponseTest {
     }
 
     @Test
-    @DisplayName("데이터 없이 성공 응답을 생성하면 success=true, data=Unit, error=null이다")
+    @DisplayName("데이터 없이 성공 응답을 생성하면 success=true, data=null, error=null이다")
     fun successWithoutData() {
         // given: 입력 없음
 
@@ -24,7 +24,7 @@ class ApiResponseTest {
 
         // then
         assertThat(response.success).isTrue()
-        assertThat(response.data).isEqualTo(Unit)
+        assertThat(response.data as Any?).isNull()
         assertThat(response.error).isNull()
     }
 
