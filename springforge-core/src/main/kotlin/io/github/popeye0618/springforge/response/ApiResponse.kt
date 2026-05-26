@@ -10,7 +10,7 @@ data class ApiResponse<out T>(
 ) {
     companion object {
 
-        fun success(): ApiResponse<Nothing?> = ApiResponse(
+        fun success(): ApiResponse<Nothing> = ApiResponse(
             success = true,
             data = null,
         )
