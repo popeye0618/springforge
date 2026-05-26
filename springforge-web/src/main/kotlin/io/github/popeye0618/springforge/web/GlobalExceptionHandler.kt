@@ -22,7 +22,7 @@ class GlobalExceptionHandler {
     private val log = LoggerFactory.getLogger(GlobalExceptionHandler::class.java)
 
     @ExceptionHandler(BusinessException::class)
-    fun handleBusinessException(e: BusinessException) = toResponseEntity(e)
+    fun handleBusinessException(e: BusinessException): ResponseEntity<ApiResponse<Nothing>> = toResponseEntity(e)
 
     @ExceptionHandler(MethodArgumentNotValidException::class)
     fun handleMethodArgumentNotValid(e: MethodArgumentNotValidException): ResponseEntity<ApiResponse<Nothing>> {
@@ -47,6 +47,7 @@ class GlobalExceptionHandler {
 
     @ExceptionHandler(ResponseStatusException::class)
     fun handleResponseStatus(e: ResponseStatusException): ResponseEntity<ApiResponse<Nothing>> {
+        log.warn("ResponseStatusException: status={}, reason={}", e.statusCode.value(), e.reason, e)
         val errorCode = when (e.statusCode.value()) {
             400 -> CommonErrorCode.INVALID_INPUT
             401 -> CommonErrorCode.UNAUTHORIZED

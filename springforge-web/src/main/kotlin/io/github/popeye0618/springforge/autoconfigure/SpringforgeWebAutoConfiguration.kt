@@ -19,5 +19,5 @@ class SpringforgeWebAutoConfiguration {
         name = ["enabled"],
         matchIfMissing = true,
     )
-    fun globalExceptionHandler() = GlobalExceptionHandler()
+    fun globalExceptionHandler(): GlobalExceptionHandler = GlobalExceptionHandler()
 }
