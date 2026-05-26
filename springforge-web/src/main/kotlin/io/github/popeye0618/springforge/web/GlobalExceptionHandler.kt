@@ -98,6 +98,7 @@ class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception::class)
     fun handleException(e: Exception): ResponseEntity<ApiResponse<Nothing>> {
+        if (e.javaClass.name == "org.springframework.security.access.AccessDeniedException") throw e
         log.error("Unhandled exception", e)
         return toResponseEntity(CommonErrorCode.INTERNAL_SERVER_ERROR)
     }

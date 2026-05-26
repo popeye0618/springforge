@@ -9,6 +9,7 @@ import jakarta.validation.ConstraintViolationException
 import jakarta.validation.Valid
 import jakarta.validation.constraints.NotBlank
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.springframework.core.MethodParameter
@@ -52,6 +53,9 @@ class GlobalExceptionHandlerTest {
 
         @GetMapping("/exception")
         fun throwException(): Nothing = throw RuntimeException("일반 예외")
+
+        @GetMapping("/access-denied")
+        fun throwAccessDenied(): Nothing = throw org.springframework.security.access.AccessDeniedException("권한 없음")
 
         @GetMapping("/response-status")
         fun throwResponseStatus(): Nothing = throw ResponseStatusException(HttpStatus.FORBIDDEN, "접근 금지")
@@ -200,6 +204,21 @@ class GlobalExceptionHandlerTest {
         // then
         assertThat(result.response.status).isEqualTo(400)
         assertThat(result.response.contentAsString).contains(CommonErrorCode.INVALID_INPUT.code)
+    }
+
+    @Test
+    @DisplayName("AccessDeniedException은 500으로 처리하지 않고 rethrow하여 Spring Security가 처리하도록 한다")
+    fun handleAccessDeniedException() {
+        // given: /access-denied 엔드포인트가 AccessDeniedException을 던짐
+
+        // when: rethrow된 예외는 ServletException으로 감싸져 전파됨
+        val exception = assertThrows<jakarta.servlet.ServletException> {
+            mockMvc.perform(get("/access-denied")).andReturn()
+        }
+
+        // then: cause가 AccessDeniedException — 500 응답이 아닌 Spring Security에게 위임
+        assertThat(exception.cause)
+            .isInstanceOf(org.springframework.security.access.AccessDeniedException::class.java)
     }
 
     @Test
